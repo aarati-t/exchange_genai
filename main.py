@@ -27,6 +27,17 @@ from llm_insight import run_audit_query
 load_dotenv()
 app = FastAPI()
 templates = Jinja2Templates(directory="templates")
+class AuditSearchFilters(BaseModel):
+    from_: Optional[str] = None  # 'from' is reserved in Python; map manually
+    to: Optional[str] = None
+    departments: List[str] = []
+    flag_types: List[str] = []
+    min_confidence: float = 0.5
+    explain: bool = True
+
+class AuditSearchPayload(BaseModel):
+    query: str
+    filters: Dict[str, Any] = {}
 
 # Static + CORS
 if os.path.isdir("static"):
@@ -556,6 +567,30 @@ def chat_with_ai(req: ChatRequest):
         print("⚠️ Gemini chat error:", e)
         return {"answer": default_answer}
 
+# audit
+@app.post("/audit-search")
+async def audit_search(payload: AuditSearchPayload):
+    """
+    POST body:
+    {
+      "query": "Show vendor similarity > 80% in the past 6 months",
+      "filters": {
+        "from": "2025-06-01",
+        "to": "2025-11-05",
+        "departments": ["Public Works"],
+        "flag_types": ["vendor_relationship","cost_pattern"],
+        "min_confidence": 0.6,
+        "explain": true
+      }
+    }
+    """
+    # Normalize 'from' field name that conflicts with Python keyword
+    filters = payload.filters.copy()
+    if "from_" in filters and not filters.get("from"):
+        filters["from"] = filters.pop("from_")
+
+    data = run_audit_query(payload.query, filters)
+    return data
 
 # ---------------------------------------------------------------------
 # Run locally
