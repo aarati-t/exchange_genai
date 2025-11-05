@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}MIGIS — Main Menu{% endblock %}
+
+{% block content %}
+  <section class="hero">
+    <h1>Maharashtra Integrated Governance & Intelligence System</h1>
+    <p class="subtitle">
+      A single, secure, AI-driven Digital Public Infrastructure for predictive, preventive, and citizen-centric governance.
+    </p>
+    <div class="panel">
+      <p><strong>Vision:</strong> To establish a single, secure, AI-driven “Digital Public Infrastructure” that enables predictive, preventive, and citizen-centric governance across all key sectors of Maharashtra, with a foundational focus on health and infrastructure.</p>
+      <p class="hint">This page is a demo entry point for stakeholders to explore MIGIS capabilities.</p>
+    </div>
+  </section>
+
+  <section style="padding-top:16px">
+    <h2>Stakeholders & Menus</h2>
+    <div class="grid">
+
+      <!-- 1️⃣ Chief Minister’s Office / Heads / Collectors -->
+      <article class="card">
+        <h3 style="margin:0 0 6px 0;font-size:16px;">Chief Minister’s Office, Department Heads, District Collectors</h3>
+        <p class="hint" style="margin-top:0">
+          Executive View • Real-time intelligence, foresight, and scenario planning.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <a class="btn" href="/dashboard">Decision Dashboards</a>
+          <a class="btn" href="/green-simulator">Green Simulator</a>
+          <a class="btn" href="/climate-risk">Climate Risk Simulator</a>
+        </div>
+      </article>
+
+      <!-- 2️⃣ Citizens / NGOs / Academia -->
+      <article class="card">
+        <h3 style="margin:0 0 6px 0;font-size:16px;">Citizens, Media, NGOs, Startups, Academia</h3>
+        <p class="hint" style="margin-top:0">
+          Public & Ecosystem • Participate, monitor, and innovate.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <a class="btn" href="/citizen-app">Citizen App</a>
+          <a class="btn" href="/oversight">Oversight Dashboard</a>
+          <a class="btn" href="/sandbox">Innovation Sandbox</a>
+        </div>
+      </article>
+
+      <!-- 3️⃣ Auditors -->
+      <article class="card">
+        <h3 style="margin:0 0 6px 0;font-size:16px;">Auditors</h3>
+        <p class="hint" style="margin-top:0">
+          Assurance • Compliance, value-for-money, and impact audits.
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <a class="btn" href="/insights">Insights</a>
+        </div>
+      </article>
+
+      <!-- 4️⃣ Government Departments -->
+      <article class="card">
+        <h3 style="margin:0 0 6px 0;font-size:16px;">Government Departments</h3>
+        <p class="hint" style="margin-top:0">
+          Health, PWD, Water Resources, Municipal Corporations, , Field Engineers, Doctors, Sanitation Workers
+        </p>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+          <a class="btn" href="/field-agent">Field Agent</a>
+        </div>
+      </article>
+
+    </div>
+  </section>
+{% endblock %}

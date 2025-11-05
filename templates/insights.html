@@ -1,0 +1,470 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Audit Insights — Red Flag Automator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="/static/insight.css"/>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <h1>Red Flag Automator — Audit Insights</h1>
+    </div>
+    <div class="hdr-actions">
+      <button id="exportBtn" class="ghost">Export</button>
+      <button id="refreshBtn" class="primary">Refresh</button>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- SECTION 1: Dashboard Layout & Key Sections -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Dashboard Layout & Key Sections</h2>
+        <p class="muted">Executive overview, anomaly detection, and project compliance — optimized for inspections and deep-dive diagnostics.</p>
+      </div>
+
+      <!-- Tabs -->
+      <div class="tabs">
+        <button class="tab active" data-tab="exec">Executive Overview</button>
+        <button class="tab" data-tab="anomaly">Anomaly Detection</button>
+        <button class="tab" data-tab="compliance">Project Compliance</button>
+      </div>
+
+      <!-- TAB: Executive Overview -->
+      <div class="tab-body active" id="tab-exec">
+        <div class="kpi-grid">
+          <div class="kpi">
+            <div class="kpi-label">Projects Monitored</div>
+            <div class="kpi-value" id="kpiProjects">–</div>
+            <div class="kpi-sub">Across all departments</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Flags (This Month)</div>
+            <div class="kpi-value" id="kpiFlags">–</div>
+            <div class="kpi-sub">Auto-detected anomalies</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">% with Active Flags</div>
+            <div class="kpi-value" id="kpiPct">–</div>
+            <div class="kpi-sub">Project-level incidence</div>
+          </div>
+          <div class="kpi">
+            <div class="kpi-label">Avg. Resolution Time</div>
+            <div class="kpi-value" id="kpiResolution">–</div>
+            <div class="kpi-sub">Days to close</div>
+          </div>
+        </div>
+
+        <div class="cards">
+          <div class="card">
+            <div class="card-head">
+              <h3>Monthly Flag Trend</h3>
+            </div>
+            <canvas id="trendChart" height="120"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Top Flag Types</h3>
+            </div>
+            <canvas id="typeChart" height="120"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Anomaly Detection -->
+      <div class="tab-body" id="tab-anomaly">
+        <div class="cards">
+          <div class="card">
+            <div class="card-head">
+              <h3>Vendor Relationship Insights</h3>
+              <span class="badge">Similarity Score</span>
+            </div>
+            <div class="table-wrap">
+              <table id="vendorTable">
+                <thead>
+                  <tr>
+                    <th>Vendor</th>
+                    <th>Tender ID</th>
+                    <th>Linked Entities</th>
+                    <th>Similarity %</th>
+                    <th>Last Checked</th>
+                  </tr>
+                </thead>
+                <tbody><!-- populated via JS --></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Cost Pattern Intelligence</h3>
+              <span class="badge warn">Deviation %</span>
+            </div>
+            <div class="table-wrap">
+              <table id="costTable">
+                <thead>
+                  <tr>
+                    <th>Project</th>
+                    <th>Predicted (₹)</th>
+                    <th>Actual (₹)</th>
+                    <th>Deviation %</th>
+                    <th>Historical Variance</th>
+                    <th>Notes</th>
+                  </tr>
+                </thead>
+                <tbody><!-- populated via JS --></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Decision Override Monitor</h3>
+              <span class="badge neutral">Anomaly Rate</span>
+            </div>
+            <div class="table-wrap">
+              <table id="overrideTable">
+                <thead>
+                  <tr>
+                    <th>Officer/Dept.</th>
+                    <th>Recs</th>
+                    <th>Overrides %</th>
+                    <th>Peer Avg.</th>
+                    <th>Remarks</th>
+                  </tr>
+                </thead>
+                <tbody><!-- populated via JS --></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>ESG Compliance Lens</h3>
+              <span class="badge danger">Low Score</span>
+            </div>
+            <div class="table-wrap">
+              <table id="esgTable">
+                <thead>
+                  <tr>
+                    <th>Project ID</th>
+                    <th>Contractor ESG</th>
+                    <th>Site Sensitivity</th>
+                    <th>Approval Date</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody><!-- populated via JS --></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Project Compliance -->
+      <div class="tab-body" id="tab-compliance">
+        <div class="cards">
+          <div class="card">
+            <div class="card-head">
+              <h3>Department-wise Flags</h3>
+            </div>
+            <canvas id="deptChart" height="130"></canvas>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h3>Compliance Heat (Last 90 Days)</h3>
+            </div>
+            <canvas id="heatChart" height="130"></canvas>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- SECTION 2: Intelligent Query Interface for Auditors -->
+    <section class="panel">
+      <div class="panel-head">
+        <h2>Intelligent Query Interface for Auditors</h2>
+        <p class="muted">Natural-language search with advanced filters. Focus on inspection, anomaly exploration, and deep dives.</p>
+      </div>
+
+      <div class="query-grid">
+        <div class="card query">
+          <div class="card-head">
+            <h3>Natural Language Search Panel</h3>
+          </div>
+          <div class="form">
+            <label>Ask a question</label>
+            <textarea id="nlQuery" rows="3" placeholder="e.g., Show infrastructure tenders with vendor similarity > 80% in last 6 months"></textarea>
+
+            <div class="filters">
+              <div>
+                <label>From</label>
+                <input type="date" id="fromDate">
+              </div>
+              <div>
+                <label>To</label>
+                <input type="date" id="toDate">
+              </div>
+              <div>
+                <label>Department</label>
+                <select id="dept" multiple>
+                  <option>Public Works</option>
+                  <option>Urban Development</option>
+                  <option>Water Resources</option>
+                  <option>Health</option>
+                  <option>Rural Development</option>
+                </select>
+              </div>
+              <div>
+                <label>Flag Types</label>
+                <div class="checkboxes">
+                  <label><input type="checkbox" value="vendor_relationship" checked> Vendor Relationship</label>
+                  <label><input type="checkbox" value="cost_pattern" checked> Cost Pattern</label>
+                  <label><input type="checkbox" value="override_frequency"> Override Frequency</label>
+                  <label><input type="checkbox" value="esg_compliance"> ESG Compliance</label>
+                </div>
+              </div>
+              <div>
+                <label>Min Confidence</label>
+                <input type="number" id="minConfidence" min="0" max="1" step="0.05" value="0.5">
+              </div>
+            </div>
+
+            <div class="actions">
+              <label class="switch">
+                <input type="checkbox" id="explainToggle" checked>
+                <span class="slider"></span>
+                <span class="switch-label">Show explainability</span>
+              </label>
+              <button id="runQuery" class="primary">Run Query</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="card results">
+          <div class="card-head">
+            <h3>Results</h3>
+            <div class="mini">
+              <span id="confBadge" class="badge neutral">Confidence: –</span>
+            </div>
+          </div>
+          <div id="summary" class="summary"></div>
+          <div id="tables"></div>
+          <div id="charts"></div>
+          <div id="explanations" class="explain"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <span>Built for proactive, predictive, and sustainable governance audits.</span>
+  </footer>
+
+<script>
+  // --- Tabs ---
+  const tabs = document.querySelectorAll('.tab');
+  const bodies = {
+    exec: document.getElementById('tab-exec'),
+    anomaly: document.getElementById('tab-anomaly'),
+    compliance: document.getElementById('tab-compliance')
+  };
+  tabs.forEach(t => t.addEventListener('click', () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    Object.values(bodies).forEach(b => b.classList.remove('active'));
+    const key = t.dataset.tab;
+    bodies[key].classList.add('active');
+  }));
+
+  // --- Charts placeholders (will be refreshed on Refresh / sample data) ---
+  let trendChart, typeChart, deptChart, heatChart;
+  function initCharts() {
+    if (trendChart) trendChart.destroy();
+    if (typeChart) typeChart.destroy();
+    if (deptChart) deptChart.destroy();
+    if (heatChart) heatChart.destroy();
+
+    const ctx1 = document.getElementById('trendChart').getContext('2d');
+    trendChart = new Chart(ctx1, {
+      type: 'line',
+      data: {
+        labels: ['Jun','Jul','Aug','Sep','Oct','Nov'],
+        datasets: [{label: 'Flags', data: [18,24,21,28,34,42]}]
+      },
+      options: { responsive: true, plugins: { legend: { labels: { color: '#cfd3e0' }}} , scales: { x: { ticks:{color:'#9aa4bf'}}, y:{ ticks:{color:'#9aa4bf'}}}}
+    });
+
+    const ctx2 = document.getElementById('typeChart').getContext('2d');
+    typeChart = new Chart(ctx2, {
+      type: 'bar',
+      data: {
+        labels: ['Vendor','Cost','Override','ESG'],
+        datasets: [{label: 'Count', data: [12,16,8,6]}]
+      },
+      options: { plugins: { legend: { display:false }}, scales: { x:{ticks:{color:'#9aa4bf'}}, y:{ticks:{color:'#9aa4bf'}}}}
+    });
+
+    const ctx3 = document.getElementById('deptChart').getContext('2d');
+    deptChart = new Chart(ctx3, {
+      type: 'bar',
+      data: {
+        labels: ['PWD','UD','Water','Health','Rural'],
+        datasets: [{label: '% With Active Flags', data: [22,18,14,11,9]}]
+      },
+      options: { plugins: { legend: { display:false }}, scales: { x:{ticks:{color:'#9aa4bf'}}, y:{ticks:{color:'#9aa4bf'}}}}
+    });
+
+    const ctx4 = document.getElementById('heatChart').getContext('2d');
+    heatChart = new Chart(ctx4, {
+      type: 'line',
+      data: {
+        labels: Array.from({length:12},(_,i)=>`W${i+1}`),
+        datasets: [{label: 'Compliance Heat Index', data: [48,50,49,52,54,53,55,57,56,58,60,62]}]
+      },
+      options: { plugins: { legend: { labels:{ color:'#cfd3e0'}}}, scales: { x:{ticks:{color:'#9aa4bf'}}, y:{ticks:{color:'#9aa4bf'}}}}
+    });
+  }
+  initCharts();
+
+  // --- Sample table fills for first paint (static demo values) ---
+  function fillTables() {
+    const vendorRows = [
+      ['XYZ Infra Ltd','TND-4571','Shared Bank ID','88%','05-Nov-2025'],
+      ['Apex Build Co','TND-4602','Same IP & Phone','82%','04-Nov-2025']
+    ];
+    const costRows = [
+      ['Bridge Upgrade Nashik','1.8 Cr','2.1 Cr','16%','12% Avg.','Re-check input rates'],
+      ['Rural Road Rehab Satara','0.9 Cr','1.04 Cr','15.5%','10% Avg.','Timeline extension']
+    ];
+    const overrideRows = [
+      ['Urban Dev. Dept.','120','27%','8%','Requires sampling audit'],
+      ['PWD West Zone','96','22%','9%','Mark for deep-dive']
+    ];
+    const esgRows = [
+      ['INF-1127','38/100','High Sensitivity Zone','02-Oct-2025','Flagged for follow-up'],
+      ['WR-7719','42/100','River Proximity','17-Sep-2025','Under review']
+    ];
+    const paint = (id, rows) => {
+      const tb = document.querySelector(`#${id} tbody`);
+      tb.innerHTML = rows.map(r => `<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('');
+    };
+    paint('vendorTable', vendorRows);
+    paint('costTable', costRows);
+    paint('overrideTable', overrideRows);
+    paint('esgTable', esgRows);
+
+    // KPIs
+    document.getElementById('kpiProjects').textContent = '215';
+    document.getElementById('kpiFlags').textContent = '42';
+    document.getElementById('kpiPct').textContent = '19.5%';
+    document.getElementById('kpiResolution').textContent = '12 days';
+  }
+  fillTables();
+
+  // --- Run LLM-backed search ---
+  const runBtn = document.getElementById('runQuery');
+  const confBadge = document.getElementById('confBadge');
+  const summaryEl = document.getElementById('summary');
+  const tablesEl = document.getElementById('tables');
+  const chartsEl = document.getElementById('charts');
+  const explEl = document.getElementById('explanations');
+
+  async function runSearch() {
+    runBtn.disabled = true; runBtn.textContent = 'Running...';
+    summaryEl.innerHTML = ''; tablesEl.innerHTML = ''; chartsEl.innerHTML = ''; explEl.innerHTML = '';
+
+    const flags = Array.from(document.querySelectorAll('.checkboxes input:checked')).map(x=>x.value);
+    const deptSel = Array.from(document.getElementById('dept').selectedOptions).map(o=>o.value);
+
+    const payload = {
+      query: document.getElementById('nlQuery').value.trim(),
+      filters: {
+        from: document.getElementById('fromDate').value || null,
+        to: document.getElementById('toDate').value || null,
+        departments: deptSel,
+        flag_types: flags,
+        min_confidence: parseFloat(document.getElementById('minConfidence').value || '0.5'),
+        explain: document.getElementById('explainToggle').checked
+      }
+    };
+
+    try {
+      const resp = await fetch('/audit-search', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) });
+      if (!resp.ok) throw new Error('Search failed.');
+      const data = await resp.json();
+
+      // Confidence
+      confBadge.textContent = `Confidence: ${Math.round((data.confidence || 0)*100)}%`;
+      confBadge.className = 'badge ' + ((data.confidence||0) >= 0.7 ? 'ok' : (data.confidence||0) >= 0.45 ? 'neutral' : 'warn');
+
+      // Summary
+      if (data.summary) {
+        summaryEl.innerHTML = `<div class="callout">${data.summary}</div>`;
+      }
+
+      // Tables
+      (data.tables || []).forEach(t => {
+        const table = document.createElement('div');
+        table.className = 'table-wrap mb';
+        const thead = `<thead><tr>${t.columns.map(c=>`<th>${c}</th>`).join('')}</tr></thead>`;
+        const tbody = `<tbody>${(t.rows||[]).map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('')}</tbody>`;
+        table.innerHTML = `<h4 class="table-title">${t.title||'Results'}</h4><table>${thead}${tbody}</table>`;
+        tablesEl.appendChild(table);
+      });
+
+      // Charts (simple time-series or bar)
+      (data.charts || []).forEach((ch, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'chart-wrap';
+        const title = document.createElement('h4');
+        title.textContent = ch.title || `Chart ${idx+1}`;
+        const canvas = document.createElement('canvas');
+        wrap.appendChild(title);
+        wrap.appendChild(canvas);
+        chartsEl.appendChild(wrap);
+
+        const ctx = canvas.getContext('2d');
+        const ds = (ch.series || []).map(s => ({ label: s.name || 'Series', data: s.data || [] }));
+        new Chart(ctx, {
+          type: (ch.type === 'timeseries' || ch.type === 'line') ? 'line' : 'bar',
+          data: { labels: ch.labels || [], datasets: ds },
+          options: { plugins:{ legend:{ labels:{ color:'#cfd3e0'}}}, scales:{ x:{ticks:{color:'#9aa4bf'}}, y:{ticks:{color:'#9aa4bf'}}}}
+        });
+      });
+
+      // Explanations
+      if ((data.explanations || []).length && (payload.filters.explain)) {
+        explEl.innerHTML = `
+          <h4>Explainability</h4>
+          <ul class="bullets">
+            ${data.explanations.map(e=>`<li>${e}</li>`).join('')}
+          </ul>
+        `;
+      }
+    } catch (e) {
+      summaryEl.innerHTML = `<div class="callout error">Unable to run query. ${e.message}</div>`;
+    } finally {
+      runBtn.disabled = false; runBtn.textContent = 'Run Query';
+    }
+  }
+
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    initCharts(); fillTables();
+  });
+  document.getElementById('exportBtn').addEventListener('click', () => {
+    // Stub: You can wire to a backend export
+    alert('Export started (stub).');
+  });
+  runBtn.addEventListener('click', runSearch);
+</script>
+</body>
+</html>

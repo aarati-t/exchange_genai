@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>{% block title %}MIGIS{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root{
+      --bg:#0b1220;--panel:#0f1a2f;--card:#111f3a;--ink:#e8ecf7;--muted:#a9b2c7;
+      --accent:#7aa2ff;--accent-2:#63e6be;--radius:16px;--shadow:0 10px 30px rgba(0,0,0,.25);
+    }
+    *{box-sizing:border-box} body{margin:0;background:
+      radial-gradient(1200px 800px at 10% -10%, rgba(99,230,190,.08), transparent),
+      radial-gradient(1200px 800px at 100% 0%, rgba(122,162,255,.10), transparent),var(--bg);
+      color:var(--ink);font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;line-height:1.5}
+    a{color:inherit;text-decoration:none}
+    .wrap{max-width:1200px;margin:0 auto;padding:24px}
+    header{position:sticky;top:0;z-index:10;backdrop-filter:blur(8px);
+      background:linear-gradient(180deg,rgba(15,26,47,.85),rgba(15,26,47,.6));
+      border-bottom:1px solid rgba(122,162,255,.15)}
+    .nav{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:14px 24px}
+    .brand{display:flex;align-items:center;gap:12px;font-weight:700;letter-spacing:.3px}
+    .mark{width:36px;height:36px;border-radius:10px;
+      background:conic-gradient(from 180deg,#63e6be,#7aa2ff);
+      box-shadow:0 0 0 4px rgba(122,162,255,.08),0 8px 24px rgba(122,162,255,.25)}
+    .brand span{font-size:18px}
+    .chip{padding:8px 12px;border:1px solid rgba(122,162,255,.25);border-radius:999px;font-size:13px;background:rgba(255,255,255,.02)}
+    .chip:hover{background:rgba(122,162,255,.08);border-color:var(--accent)}
+    main{padding:24px}
+    .hero h1{margin:0;font-size:clamp(24px,2.6vw + 8px,40px);line-height:1.15}
+    .subtitle{color:var(--muted);margin:6px 0 0 0}
+    .panel{margin-top:18px;background:linear-gradient(180deg,rgba(17,31,58,.9),rgba(17,31,58,.7));
+      border:1px solid rgba(122,162,255,.18);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+    .card{background:linear-gradient(180deg,rgba(17,31,58,.85),rgba(12,22,43,.9));
+      border:1px solid rgba(122,162,255,.14);border-radius:var(--radius);padding:16px;box-shadow:none}
+    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 12px;font-size:14px;border-radius:10px;
+      background:rgba(122,162,255,.10);border:1px solid rgba(122,162,255,.28)}
+    .btn:hover{background:rgba(122,162,255,.18);border-color:var(--accent)}
+    .grid{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}
+    footer{padding:28px 24px;color:var(--muted);border-top:1px solid rgba(122,162,255,.12);margin-top:24px}
+    .hint{font-size:12px;color:var(--muted)}
+    .back{margin:8px 0 0 0;display:inline-block;font-size:13px}
+  </style>
+  {% block head %}{% endblock %}
+</head>
+<body>
+  <header>
+    <div class="nav wrap" style="padding-left:0;padding-right:0;">
+      <div class="brand">
+        <div class="mark" aria-hidden="true"></div><span>MIGIS</span>
+      </div>
+      <nav class="quick-links" aria-label="Quick links" style="display:flex;gap:10px;flex-wrap:wrap;">
+        <a class="chip" href="/">Home</a>
+        <a class="chip" href="/dashboard">Dashboards</a>
+        <a class="chip" href="/citizen-app">Citizen App</a>
+        <a class="chip" href="/oversight">Oversight</a>
+        <a class="chip" href="/sandbox">Sandbox</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="wrap">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="wrap" style="padding-left:0;padding-right:0;">
+    <div style="display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+      <span>© <span id="year"></span> MIGIS • Prototype demo</span>
+      <span class="hint">Built for proactive, climate-aware governance.</span>
+    </div>
+  </footer>
+  <script>document.getElementById('year').textContent=new Date().getFullYear()</script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

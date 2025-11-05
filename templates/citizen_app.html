@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title> Jan Darshan — Citizen App</title>
+  <link rel="stylesheet" href="/static/citizen.css">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+</head>
+<body>
+<header>
+  <h1>🏛️  Jan Darshan — Citizen Portal</h1>
+  <p>Report issues, track status, and view predictive insights.</p>
+</header>
+
+<main>
+  <section class="card">
+    <h2>📢 Report an Issue</h2>
+    <form id="complaintForm">
+      <label>Complaint Description:</label>
+      <textarea name="description" placeholder="Describe your issue..."></textarea>
+
+      <label>Detected Category:</label>
+      <input name="category" id="category" list="categoryList">
+<datalist id="categoryList">
+  <option value="INFRA_ROAD">
+  <option value="WATER_DRAINAGE">
+  <option value="HEALTH_SANITATION">
+  <option value="LIGHTING">
+  <option value="SOLID_WASTE">
+  <option value="OTHER">
+</datalist>
+
+      <label>Location / Address:</label>
+      <input name="location" placeholder="Enter or use GPS...">
+
+      <label>Upload Photo:</label>
+      <input type="file" name="photo" accept="image/*">
+
+      <label>
+        <input type="checkbox" name="verify_id">
+        Verify my identity (MIGP Verify)
+      </label>
+
+      <label>
+        <input type="checkbox" name="consent">
+        I consent to data use for analytics.
+      </label>
+
+      <button type="submit">Submit Complaint</button>
+    </form>
+
+    <div id="formMessage"></div>
+  </section>
+
+  <section class="card">
+    <h2>📊 My Complaints & Predictive Insights</h2>
+    <table id="complaintTable">
+      <thead>
+        <tr>
+          <th>ID</th><th>Description</th><th>Category</th>
+          <th>Status</th><th>Prediction</th><th>Location</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </section>
+</main>
+
+<script>
+document.getElementById("complaintForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const formData = new FormData(e.target);
+  const obj = Object.fromEntries(formData.entries());
+  const res = await fetch("/api/complaints", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(obj)
+  });
+  const msg = await res.json();
+  document.getElementById("formMessage").innerText = msg.message;
+  loadComplaints();
+});
+
+async function loadComplaints() {
+  const res = await fetch("/api/complaints");
+  const data = await res.json();
+  const tbody = document.querySelector("#complaintTable tbody");
+  tbody.innerHTML = "";
+  data.forEach(c => {
+    tbody.innerHTML += `
+      <tr>
+        <td>${c.id}</td>
+        <td>${c.description}</td>
+        <td>${c.category}</td>
+        <td>${c.status}</td>
+        <td>${c.prediction}</td>
+        <td>${c.location}</td>
+      </tr>`;
+  });
+}
+loadComplaints();
+</script>
+</body>
+</html>

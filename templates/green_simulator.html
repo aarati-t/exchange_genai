@@ -1,0 +1,205 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Green Simulator — Lifecycle & What-if</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="/static/green_simulator.css"/>
+  <style>
+    .cost-row {
+      display:flex;gap:18px;flex-wrap:wrap;align-items:stretch;
+    }
+    .comparison-col,.chart-card {
+      flex:1 1 300px;display:flex;flex-direction:column;
+      background:rgba(255,255,255,0.03);border-radius:10px;
+      padding:16px;border:1px solid rgba(122,162,255,.15);
+    }
+    .chart-card{min-width:340px;}
+    .chart-wrapper{flex:1;position:relative;}
+    #costChart{width:100%!important;height:100%!important;}
+    @media(max-width:1024px){.cost-row{flex-direction:column;}}
+  </style>
+</head>
+
+<body>
+<header>
+  <div style="display:flex;align-items:center;gap:10px">
+    <h1>🌿 Green Simulator</h1>
+    <a href="/dashboard" class="back">← Back to Dashboards</a>
+  </div>
+  <span class="card-hint">ENV: {{ env }}</span>
+</header>
+
+<main>
+  <!-- Row: Comparative Cost-Benefit + Chart -->
+  <section class="card">
+    <div class="card-h">
+      <h2>📊 Comparative Cost-Benefit (Lifecycle)</h2>
+      <div class="savings-badge savings-positive">+₹180 Cr Net Savings</div>
+    </div>
+
+    <div class="cost-row">
+      <div class="comparison-col comparison-bad">
+        <h4>❌ Traditional Approach</h4>
+        <div class="metric-value savings-negative">₹420 Cr</div>
+        <div class="metric-label">20-year total cost</div>
+        <div class="impact-bar"><div class="impact-fill" style="width:100%;background:#ff6b6b"></div></div>
+        <div>🔄 High maintenance</div>
+        <div>💸 Energy inefficient</div>
+        <div>🌡️ Poor thermal comfort</div>
+      </div>
+
+      <div class="comparison-col comparison-good">
+        <h4>✅ Sustainable Approach</h4>
+        <div class="metric-value savings-positive">₹240 Cr</div>
+        <div class="metric-label">20-year total cost</div>
+        <div class="impact-bar"><div class="impact-fill" style="width:57%;background:#63e6be"></div></div>
+        <div>🔄 Low maintenance</div>
+        <div>💡 Energy efficient</div>
+        <div>🌿 Better comfort</div>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-wrapper">
+          <canvas id="costChart"></canvas>
+        </div>
+        <p class="chart-desc">
+          Traditional vs Sustainable costs and CO₂ emissions (20-year projection)
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 🌿 What-if Scenario Simulator -->
+  <section class="card">
+    <div class="card-h">
+      <h2>🤖 What-if Scenario Simulator (Gemini)</h2>
+      <span class="card-hint">AI-powered climate risk analysis</span>
+    </div>
+
+    <!-- Input form -->
+    <form id="whatif-form">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div>
+          <label>📍 Location</label>
+          <input name="location" placeholder="e.g., Pune" value="Pune">
+        </div>
+        <div>
+          <label>🏗️ Project Type</label>
+          <select name="asset_type">
+            <option>Metro System</option><option>Coastal Road</option>
+            <option>Hospital</option><option>School Complex</option>
+          </select>
+        </div>
+        <div>
+          <label>🧱 Materials</label>
+          <select name="materials">
+            <option>Traditional concrete & steel</option>
+            <option>40% fly-ash concrete</option>
+            <option>Recycled materials + green tech</option>
+          </select>
+        </div>
+        <div>
+          <label>💰 Budget (₹ Cr)</label>
+          <input name="budget" type="number" placeholder="e.g., 500" value="500">
+        </div>
+      </div>
+
+      <div style="margin-top:12px;">
+        <label>🎯 Climate Focus Areas</label>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;">
+          <label><input type="checkbox" name="focus" value="flood" checked> 🌊 Flood Resilience</label>
+          <label><input type="checkbox" name="focus" value="heat" checked> 🌡️ Heat Management</label>
+          <label><input type="checkbox" name="focus" value="carbon"> 🌍 Carbon Reduction</label>
+          <label><input type="checkbox" name="focus" value="biodiversity"> 🦋 Biodiversity</label>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-simulate">🚀 Simulate Climate Impact</button>
+    </form>
+
+    <!-- Formatted Gemini output -->
+    <div id="whatif-output"
+         class="scenario-output mt-3 text-sm bg-surface-alt rounded-xl p-4 leading-relaxed whitespace-pre-line border border-gray-200 min-h-[120px]">
+      <em class="text-gray-500">💡 Configure your scenario and click “Simulate” to see AI risk analysis and sustainability insights.</em>
+    </div>
+  </section>
+
+  <a class="fab" href="/chat" title="Open Command Center Chat">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z"/>
+    </svg>
+  </a>
+</main>
+
+<script>
+let costChart;
+
+/* --- Draw lifecycle chart --- */
+async function drawCostChart(){
+  try{
+    const res = await fetch('/api/cost-benefit');
+    const data = await res.json();
+    const ctx = document.getElementById('costChart').getContext('2d');
+    if(costChart) costChart.destroy();
+
+    costChart = new Chart(ctx,{
+      type:'line',
+      data:{
+        labels:data.rows.map(r=>r.year),
+        datasets:[
+          {label:'Traditional Cost (₹ Cr)',data:data.rows.map(r=>r.traditional_cost),
+           borderColor:'#ff6b6b',backgroundColor:'rgba(255,107,107,.15)',fill:true,tension:.4},
+          {label:'Sustainable Cost (₹ Cr)',data:data.rows.map(r=>r.sustainable_cost),
+           borderColor:'#63e6be',backgroundColor:'rgba(99,230,190,.15)',fill:true,tension:.4}
+        ]
+      },
+      options:{
+        responsive:true,maintainAspectRatio:false,
+        scales:{
+          y:{title:{display:true,text:'Cost (₹ Cr)'},ticks:{color:'#a9b2c7'}},
+          x:{ticks:{color:'#a9b2c7'}}
+        },
+        plugins:{legend:{labels:{color:'#e8ecf7'}}}
+      }
+    });
+  }catch(e){console.error('Chart load failed',e);}
+}
+
+/* --- What-if Simulation (Gemini) --- */
+document.getElementById('whatif-form').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const form=new FormData(e.target);
+  const payload={
+    location:form.get('location')||'',
+    asset_type:form.get('asset_type')||'',
+    materials:form.get('materials')||'',
+    budget:form.get('budget')||'',
+    constraints:Array.from(document.querySelectorAll('input[name="focus"]:checked')).map(x=>x.value).join(', '),
+    notes:''
+  };
+  const out=document.getElementById('whatif-output');
+  out.innerHTML='<em>🧠 Analyzing scenario with Gemini…</em>';
+
+  try{
+    const res=await fetch('/api/what-if',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const data=await res.json();
+
+    // --- Format Gemini output ---
+    let formatted=(data.result||'No response.')
+      .replace(/\n/g,'<br>')
+      .replace(/\*\*/g,'<b>').replace(/<\/b><b>/g,'')
+      .replace(/•/g,'•&nbsp;');
+
+    out.innerHTML=formatted;
+  }catch(err){
+    console.error('❌ Gemini simulation error:',err);
+    out.innerHTML='<span class="text-red-600">⚠️ Error running simulation.</span>';
+  }
+});
+
+window.addEventListener('DOMContentLoaded',drawCostChart);
+</script>
+</body>
+</html>

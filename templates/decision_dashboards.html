@@ -1,0 +1,298 @@
+{% extends "base.html" %}
+{% block title %}Decision Dashboards — MIGIS{% endblock %}
+
+{% block head %}
+<link
+  rel="stylesheet"
+  href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+  crossorigin=""
+/>
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  .kpis{display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+  .kpi{padding:14px;border-radius:14px;background:linear-gradient(180deg,rgba(17,31,58,.85),rgba(12,22,43,.9));border:1px solid rgba(122,162,255,.14)}
+  .kpi .label{font-size:12px;color:#a9b2c7}
+  .kpi .value{font-size:28px;font-weight:700}
+  .board{display:grid;gap:16px;grid-template-columns:1.15fr .85fr}
+  .card-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  #map{height:380px;border-radius:12px;border:1px solid rgba(122,162,255,.14)}
+  table{width:100%;border-collapse:collapse}
+  th,td{padding:10px;border-bottom:1px solid rgba(122,162,255,.12);text-align:left;font-size:14px}
+  th{color:#a9b2c7;font-weight:600}
+  .approve-btn{padding:8px 10px;border-radius:10px;border:1px solid rgba(99,230,190,.4);background:rgba(99,230,190,.08);cursor:pointer}
+  .approve-btn:hover{background:rgba(99,230,190,.14)}
+  .fab{position:fixed;right:22px;bottom:22px;width:56px;height:56px;border-radius:50%;
+       display:flex;align-items:center;justify-content:center;cursor:pointer;
+       background:conic-gradient(from 180deg,#63e6be,#7aa2ff);box-shadow:0 10px 26px rgba(0,0,0,.35)}
+  .fab svg{color:#0b1220}
+  .legend{display:flex;gap:10px;flex-wrap:wrap}
+  .legend .badge{font-size:12px;padding:6px 10px;border-radius:999px;border:1px solid rgba(122,162,255,.25);background:rgba(255,255,255,.03);color:#e8ecf7}
+  @media (max-width: 1024px){ .board{grid-template-columns:1fr} }
+</style>
+{% endblock %}
+
+{% block content %}
+<a class="back" href="/">← Back to main</a>
+
+<section class="hero">
+  <h1>Decision Dashboards</h1>
+  <p class="subtitle">Predictive alerts, geo-intel, KPIs, and actionable recommendations for officers.</p>
+  <div class="panel" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap">
+    <span class="hint">Auto-refresh every 60s</span>
+    <div class="legend">
+      <span class="badge">🩺 Health Alerts</span>
+      <span class="badge">💧 Water Infrastructure</span>
+      <span class="badge">🛤️ Transport Infrastructure</span>
+    </div>
+  </div>
+</section>
+
+<!-- KPI CARDS -->
+<section style="padding-top:12px">
+  <div class="kpis">
+    <div class="kpi">
+      <div class="label">Critical Alerts (Live)</div>
+      <div id="kpi-critical" class="value">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Ongoing Projects</div>
+      <div id="kpi-projects" class="value">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Citizen Complaints (24h)</div>
+      <div id="kpi-complaints" class="value">—</div>
+    </div>
+    <div class="kpi">
+      <div class="label">Avg. Prediction Confidence</div>
+      <div id="kpi-confidence" class="value">—</div>
+    </div>
+  </div>
+</section>
+
+<section style="padding-top:16px">
+  <div class="board">
+    <!-- LEFT: MAP + ALERT LOG -->
+    <div class="card">
+      <div class="card-h">
+        <h3 style="margin:0;font-size:16px;">🗺️ Geo Map — Health & Infrastructure</h3>
+        <span class="hint">Block/Taluka markers (demo)</span>
+      </div>
+      <div id="map"></div>
+
+      <div style="height:16px"></div>
+      <div class="card">
+        <div class="card-h">
+          <h3 style="margin:0;font-size:16px;">📋 Alert Log (BigQuery)</h3>
+          <span class="hint">Prioritized events</span>
+        </div>
+        <div style="overflow:auto;">
+          <table>
+            <thead>
+              <tr><th>Time</th><th>District</th><th>Type</th><th>Score</th><th>Note</th></tr>
+            </thead>
+            <tbody id="alert-log"><tr><td colspan="5" class="hint">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- RIGHT: TIME SERIES + RECOMMENDATIONS -->
+    <div class="card">
+      <div class="card-h">
+        <h3 style="margin:0;font-size:16px;">📈 Time Series</h3>
+        <span class="hint">Complaints & Prediction Confidence</span>
+      </div>
+      <canvas id="tsChart" height="168"></canvas>
+
+      <div style="height:16px"></div>
+      <div class="card">
+        <div class="card-h">
+          <h3 style="margin:0;font-size:16px;">🤖 AI Recommendations</h3>
+          <span class="hint">Approve to record action</span>
+        </div>
+
+        <!-- Health allocation recommendation -->
+        <div class="panel" style="padding:12px">
+          <div style="line-height:1.4">
+            <strong>Health:</strong> Allocate <strong>5 additional doctors</strong> to
+            <strong>Satara District Hospital</strong> next week;
+            <strong>outbreak risk 78%</strong>.
+          </div>
+          <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+            <button class="approve-btn"
+              onclick="approveAllocation('Satara District Hospital', 5, 0.78)">Approve</button>
+            <span class="hint" id="alloc-msg"></span>
+          </div>
+        </div>
+
+        <!-- Infra: water pipe -->
+        <div class="panel" style="padding:12px;margin-top:10px">
+          <div><strong>Water:</strong> The model predicts a <strong>65% probability</strong> of a water pipe failure in <strong>Zone Y</strong>. Recommend pre-emptive valve checks & inventory staging in 48h.</div>
+        </div>
+
+        <!-- Infra: bridge -->
+        <div class="panel" style="padding:12px;margin-top:10px">
+          <div><strong>Transport:</strong> <strong>Bridge Y</strong> has an <strong>80% failure probability</strong> in <strong>6 months</strong>. Recommend structural audit and immediate load restrictions.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Floating Chat button -->
+<a class="fab" href="/chat" title="Open Command Center Chat">
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+    <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z"/>
+  </svg>
+</a>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let map, tsChart;
+
+function initMap() {
+  map = L.map('map', { zoomControl: true }).setView([18.97, 72.82], 6); // Maharashtra view
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OSM' }).addTo(map);
+}
+
+function addHealthMarker(p){
+  const marker = L.circleMarker([p.lat, p.lng], { radius: 7 });
+  marker.addTo(map).bindPopup(`🩺 <b>${p.block}</b><br/>${p.disease} — Risk ${p.risk_score}%`);
+}
+
+function addInfraMarker(p){
+  const marker = L.circleMarker([p.lat, p.lng], { radius: 7, color: '#ffb703' });
+  marker.addTo(map).bindPopup(`🏗️ <b>${p.asset}</b><br/>${p.note}`);
+}
+
+function renderTS(data) {
+  const ctx = document.getElementById('tsChart').getContext('2d');
+  if (tsChart) tsChart.destroy();
+  tsChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: data.labels,
+      datasets: [
+        { label: 'Complaints', data: data.complaints, borderWidth: 2, tension:.25 },
+        { label: 'Confidence', data: data.confidence, borderWidth: 2, tension:.25 }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { labels: { color: '#e8ecf7' } } },
+      scales: {
+        x: { ticks: { color: '#a9b2c7' }, grid: { color:'rgba(122,162,255,.12)'} },
+        y: { ticks: { color: '#a9b2c7' }, grid: { color:'rgba(122,162,255,.12)'} }
+      }
+    }
+  });
+}
+
+async function loadKPIs() {
+  try{
+    const r = await fetch('/api/kpis'); const d = await r.json();
+    document.getElementById('kpi-critical').textContent = d.critical_alerts ?? '—';
+    document.getElementById('kpi-projects').textContent = d.ongoing_projects ?? '—';
+    document.getElementById('kpi-complaints').textContent = d.complaints_24h ?? '—';
+    document.getElementById('kpi-confidence').textContent = (d.avg_confidence ?? 0) + '%';
+  }catch(e){ console.error(e); }
+}
+
+async function loadMapPoints() {
+  try{
+    const hr = await fetch('/api/health-alerts'); const hd = await hr.json();
+    (hd.points||[]).forEach(addHealthMarker);
+
+    const ir = await fetch('/api/infra-events'); const id = await ir.json();
+    (id.points||[]).forEach(addInfraMarker);
+  }catch(e){ console.error(e); }
+}
+
+/*async function  loadAlertLog() {
+  try{
+    const r = await fetch('/api/alerts-log'); const d = await r.json();
+    console.log('alerts data JSON :', d);
+    const rows = (d.rows||[]).map(a=>`<tr>
+      <td>${a.time}</td><td>${a.district}</td><td>${a.type}</td><td>${a.score}%</td><td>${a.note}</td>
+    </tr>`).join('');
+    document.getElementById('alert-log').innerHTML = rows || `<tr><td colspan="5" class="hint">No alerts.</td></tr>`;
+  }catch(e){
+    console.error(e);
+    document.getElementById('alert-log').innerHTML = `<tr><td colspan="5" class="hint">Failed to load.</td></tr>`;
+  }
+  
+} */
+async function loadAlertLog() {
+  try {
+    const response = await fetch('/api/alerts-log');
+
+    // ✅ Handle HTTP errors cleanly
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`HTTP ${response.status}: ${text}`);
+    }
+
+    const data = await response.json();
+    console.log('alerts-log data:', data);
+
+    const rows = (data.rows || []).map(a => `
+      <tr>
+        <td>${a.time}</td>
+        <td>${a.district}</td>
+        <td>${a.type}</td>
+        <td>${a.score}%</td>
+        <td>${a.note}</td>
+      </tr>
+    `).join('');
+
+    document.getElementById('alert-log').innerHTML =
+      rows || `<tr><td colspan="5" class="hint">No alerts.</td></tr>`;
+
+  } catch (e) {
+    console.error('alert-log fetch failed:', e);
+    document.getElementById('alert-log').innerHTML =
+      `<tr><td colspan="5" class="hint">Failed to load.</td></tr>`;
+  }
+}
+
+async function loadSeries() {
+  try{
+    const r = await fetch('/api/time-series'); const d = await r.json();
+    renderTS(d);
+  }catch(e){ console.error(e); }
+}
+
+async function approveAllocation(facility, count, risk){
+  try{
+    const resp = await fetch('/api/recommendations/allocate-doctors', {
+      method:'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ facility, count, risk })
+    });
+    const data = await resp.json();
+    document.getElementById('alloc-msg').textContent = data.message || 'Recorded.';
+  }catch(e){
+    console.error(e);
+    document.getElementById('alloc-msg').textContent = 'Recorded locally (offline).';
+  }
+}
+
+// Boot
+initMap();
+loadKPIs();
+loadMapPoints();
+loadAlertLog();
+loadSeries();
+
+// Auto refresh
+setInterval(loadKPIs, 60000);
+setInterval(loadAlertLog, 60000);
+</script>
+{% endblock %}

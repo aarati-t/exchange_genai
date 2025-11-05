@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <title>Climate Risk — Green Simulator</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="/static/green_simulator.css"/>
+</head>
+
+<body class="theme-dark">
+<header>
+  <div style="display:flex;align-items:center;gap:10px">
+    <h1>⚠️ Climate Risk Assessment</h1>
+    <a href="/dashboard" class="back">← Back to Dashboards</a>
+  </div>
+  <span class="card-hint">ENV: {{ env }}</span>
+</header>
+
+<main class="dashboard-grid" style="display:grid;gap:18px;grid-template-columns:1.3fr 0.7fr;">
+  <!-- 🗺️ Map -->
+  <section class="card">
+    <h2>🗺️ Climate Risk Zonation Map</h2>
+    <div id="map" class="rounded-md border border-surface h-96"></div>
+    <div class="map-controls">
+      <button class="layer-btn active" data-layer="flood">🌊 Flood Risk</button>
+      <button class="layer-btn" data-layer="heat">🌡️ Heat Stress</button>
+      <button class="layer-btn" data-layer="biodiversity">🌿 Biodiversity</button>
+    </div>
+    <p class="map-legend">
+      <span class="risk-indicator risk-high"></span> High Risk
+      <span class="risk-indicator risk-medium"></span> Moderate
+      <span class="risk-indicator risk-low"></span> Resilient
+    </p>
+  </section>
+
+  <!-- ⚠️ Climate Risk Assessment -->
+  <section class="card climate-risk">
+    <div class="card-h">
+      <h2>⚠️ Climate Risk Assessment</h2>
+      <span class="risk-score">58/100</span>
+    </div>
+
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Financial Risk</div>
+        <div class="metric-value savings-negative">₹240Cr</div>
+        <div class="metric-label">Potential flood damage</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Carbon Impact</div>
+        <div class="metric-value savings-negative">12K t</div>
+        <div class="metric-label">Embodied CO₂</div>
+      </div>
+    </div>
+
+    <div id="alerts" class="space-y"></div>
+  </section>
+
+  <a class="fab" href="/chat" title="Open Command Center Chat">
+    <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <path d="M21 15a4 4 0 0 1-4 4H7l-4 4V7a4 4 0 0 1 4-4h10a4 4 0 0 1 4 4v8z"/>
+    </svg>
+  </a>
+</main>
+
+<script>
+let map, highlightCircle;
+
+/* --- Map --- */
+function initMap(){
+  map = L.map('map').setView([18.92,72.83],7);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
+  L.circle([19.04,72.82],{radius:30000,color:'#ff6b6b',fillColor:'#ff6b6b',fillOpacity:0.3})
+    .bindPopup('🌊 <b>Mumbai Coastal Zone</b><br>High flood risk by 2050').addTo(map);
+  L.circle([18.52,73.85],{radius:25000,color:'#facc15',fillColor:'#facc15',fillOpacity:0.3})
+    .bindPopup('🌡️ <b>Pune Urban Area</b><br>Moderate heat island risk').addTo(map);
+}
+
+/* --- Highlight --- */
+function highlightMapZone(lat,lng,label){
+  if(highlightCircle){map.removeLayer(highlightCircle);}
+  highlightCircle=L.circleMarker([lat,lng],{
+    radius:12,color:'#00ffcc',weight:3,fillOpacity:0.6
+  }).addTo(map).bindPopup(label).openPopup();
+  map.setView([lat,lng],9,{animate:true});
+}
+
+/* --- Render Alerts (restores full structure) --- */
+function renderAlerts(){
+  const alerts=[
+    {
+      title:'🌊 Mumbai Coastal Road',
+      detail:'High storm-surge risk by 2050. Recommend elevation +2 m & flood barriers.',
+      sev:'high',lat:19.04,lng:72.82,
+      financial:'₹240 Cr potential damage',
+      solution:'💡 Shift alignment 200 m inland'
+    },
+    {
+      title:'🚇 Pune Metro Extension',
+      detail:'12 000 t CO₂ embodied carbon. Use 40 % fly-ash & solar-reflective coatings.',
+      sev:'medium',lat:18.52,lng:73.85,
+      financial:'₹45 Cr additional cooling cost',
+      solution:'💡 Green roofs + efficient cooling'
+    }
+  ];
+  const box=document.getElementById('alerts'); box.innerHTML='';
+  alerts.forEach(a=>{
+    const div=document.createElement('div');
+    div.className=`alert-card alert-${a.sev}`;
+    div.dataset.lat=a.lat; div.dataset.lng=a.lng;
+    div.innerHTML=`
+      <div class="font-semibold">${a.title}</div>
+      <div class="text-sm">${a.detail}</div>
+      <div class="risk-detail">
+        <span class="financial-risk">${a.financial}</span>
+        <span class="solution">${a.solution}</span>
+      </div>`;
+    div.addEventListener('click',()=>highlightMapZone(a.lat,a.lng,a.title));
+    box.appendChild(div);
+  });
+}
+
+window.addEventListener('DOMContentLoaded',()=>{
+  initMap();
+  renderAlerts();
+});
+</script>
+</body>
+</html>

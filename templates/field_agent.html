@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Field Agent App — DPS</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="/static/field.css" rel="stylesheet">
+</head>
+<body class="app">
+  <header class="topbar">
+    <div class="brand">⚙️ Field Agent — DPS</div>
+    <div class="tools">
+      <input id="agentId" class="input" placeholder="Agent ID (e.g., eng-01)" />
+      <select id="dept" class="select">
+        <option value="">All Depts</option>
+        <option>PWD</option>
+        <option>Health</option>
+        <option>Water</option>
+        <option>Municipal</option>
+      </select>
+      <select id="urg" class="select">
+        <option value="">Urgency</option>
+        <option value="P1">P1</option>
+        <option value="P2">P2</option>
+        <option value="P3">P3</option>
+      </select>
+      <button id="refreshBtn" class="btn">⟳ Refresh</button>
+    </div>
+  </header>
+
+  <main class="grid">
+    <section class="left">
+      <div class="panel">
+        <div class="panel-h">
+          <h2>🧾 My Tasks <span class="dim">(Prioritized by DPS)</span></h2>
+          <div>
+            <button id="seedBtn" class="btn btn-ghost">🌱 Seed demo</button>
+            <button id="recomputeBtn" class="btn btn-ghost">⚡ Recompute DPS</button>
+          </div>
+        </div>
+        <div id="taskList" class="task-list"></div>
+      </div>
+    </section>
+
+    <section class="right">
+      <div class="panel">
+        <div class="panel-h">
+          <h2>⏱️ SLA Monitor</h2>
+        </div>
+        <div id="slaSummary" class="sla-summary">
+          <div class="kpi"><div class="kpi-v" id="kpiOnTime">—</div><div class="kpi-l">On-time</div></div>
+          <div class="kpi"><div class="kpi-v" id="kpiDueSoon">—</div><div class="kpi-l">Due soon</div></div>
+          <div class="kpi"><div class="kpi-v" id="kpiOverdue">—</div><div class="kpi-l">Overdue</div></div>
+        </div>
+        <div class="panel-h">
+          <h2>📍 Context & Reason</h2>
+        </div>
+        <div id="contextBox" class="context-box">Select a task to view “Why Priority?”</div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast">✔️ Data saved</div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const toast = (msg="✔️ Data saved") => {
+      const t = $("toast");
+      t.textContent = msg;
+      t.classList.add("show");
+      setTimeout(()=>t.classList.remove("show"), 1500);
+    };
+
+    let selectedTaskId = null;
+
+    function slaBadge(dueAt) {
+      const now = new Date();
+      const due = new Date(dueAt);
+      const ms = due - now;
+      if (isNaN(due.getTime())) return `<span class="badge">SLA —</span>`;
+      if (ms < 0) return `<span class="badge badge-red">Overdue</span>`;
+      const hrs = Math.round(ms / (1000*60*60));
+      if (hrs <= 2) return `<span class="badge badge-amber">Due ≤2h</span>`;
+      return `<span class="badge">Due in ${hrs}h</span>`;
+    }
+
+    function progressBar(dueAt, createdAt, status) {
+      const now = new Date();
+      const start = new Date(createdAt);
+      const end = new Date(dueAt);
+      if (isNaN(start) || isNaN(end)) return `<div class="bar"><div class="bar-fill" style="width:0%"></div></div>`;
+      const total = end - start;
+      const spent = Math.max(0, Math.min(total, now - start));
+      const pct = total > 0 ? Math.round((spent/total) * 100) : 0;
+      let cls = '';
+      if (status === 'Completed') cls = ' ok';
+      else if (pct >= 100) cls = ' bad';
+      else if (pct >= 75) cls = ' warn';
+      return `<div class="bar${cls}"><div class="bar-fill" style="width:${Math.min(pct,100)}%"></div></div>`;
+    }
+
+    function taskCard(t) {
+      const pr = (t.priority || '').toUpperCase();
+      return `
+      <div class="card ${selectedTaskId===t.id?'active':''}" data-id="${t.id}">
+        <div class="card-h">
+          <div>
+            <div class="title">${t.title || '(no title)'} <span class="dept">${t.department||''}</span></div>
+            <div class="muted">${t.category||''} • ${t.location_name || ''}</div>
+          </div>
+          <div class="right">
+            <span class="pill ${pr}">${pr||'P?'}</span>
+            <span class="pill dps">DPS ${Math.round(t.dps_score||0)}</span>
+            ${slaBadge(t.due_at)}
+          </div>
+        </div>
+        ${progressBar(t.due_at, t.created_at, t.status)}
+        <div class="row">
+          <div class="muted why">Why: ${t.priority_reason || '—'}</div>
+        </div>
+        <div class="row actions">
+          <button class="btn-sm" onclick="startTask('${t.id}')">▶️ Start</button>
+          <button class="btn-sm" onclick="markInProgress('${t.id}')">🔧 In-Progress</button>
+          <button class="btn-sm" onclick="markComplete('${t.id}')">✔️ Complete</button>
+          <button class="btn-sm" onclick="openContext('${t.id}')">ℹ️ Reason</button>
+          <a class="btn-sm btn-ghost" href="https://www.google.com/maps?q=${t.lat||''},${t.lon||''}" target="_blank">🧭 Navigate</a>
+        </div>
+      </div>`;
+    }
+
+    async function loadTasks() {
+      const params = new URLSearchParams();
+      const agent = $("agentId").value.trim();
+      const dept = $("dept").value.trim();
+      const urg = $("urg").value.trim();
+      if (agent) params.append("assignee", agent);
+      if (dept) params.append("department", dept);
+      if (urg) params.append("priority", urg);
+
+      const res = await fetch(`/api/tasks?${params.toString()}`);
+      const data = await res.json();
+
+      const list = $("taskList");
+      list.innerHTML = (data.tasks || []).map(taskCard).join('') || `<div class="empty">No tasks</div>`;
+
+      // SLA summary
+      const now = new Date();
+      let onTime=0, dueSoon=0, overdue=0;
+      (data.tasks||[]).forEach(t=>{
+        const due = new Date(t.due_at);
+        if (isNaN(due)) return;
+        const leftHrs = (due - now)/(1000*60*60);
+        if (t.status === 'Completed') onTime++;
+        else if (leftHrs <= 0) overdue++;
+        else if (leftHrs <= 2) dueSoon++;
+        else onTime++;
+      });
+      $("kpiOnTime").textContent = onTime;
+      $("kpiDueSoon").textContent = dueSoon;
+      $("kpiOverdue").textContent = overdue;
+    }
+
+    async function updateStatus(id, status) {
+      await fetch(`/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({status})
+      });
+      toast("✔️ Data saved");
+      await loadTasks();
+    }
+    function startTask(id){ updateStatus(id, "Started"); }
+    function markInProgress(id){ updateStatus(id, "In-Progress"); }
+    function markComplete(id){ updateStatus(id, "Completed"); }
+
+    async function openContext(id) {
+      selectedTaskId = id;
+      const res = await fetch(`/api/tasks/${id}`);
+      const t = await res.json();
+      document.querySelectorAll(".card").forEach(el=>{
+        el.classList.toggle("active", el.getAttribute("data-id")===id);
+      });
+      $("contextBox").innerHTML = `
+        <div class="ctx">
+          <div class="ctx-line"><b>Why Priority:</b> ${t.priority_reason || '—'}</div>
+          <div class="ctx-line"><b>Dept:</b> ${t.department||'—'} | <b>Category:</b> ${t.category||'—'}</div>
+          <div class="ctx-line"><b>Base Urgency:</b> ${t.base_urgency||0} | <b>Predictive Risk:</b> ${(t.predictive_risk||0).toFixed(2)} | <b>Citizen Impact:</b> ${t.citizen_impact||0}</div>
+          <div class="ctx-line"><b>SLA (hrs):</b> ${t.sla_hours||'—'} | <b>Due:</b> ${t.due_at||'—'}</div>
+          <div class="ctx-line"><b>DPS Score:</b> ${Math.round(t.dps_score||0)}</div>
+          <div class="ctx-muted">Task ID: ${t.id}</div>
+        </div>`;
+      // subtle scroll focus
+      const el = document.querySelector(`.card[data-id="${id}"]`);
+      if (el) el.scrollIntoView({behavior:"smooth", block:"center"});
+    }
+
+    async function seedDemo() {
+      await fetch("/api/seed", {method:"POST"});
+      toast("🌱 Seeded demo tasks");
+      await loadTasks();
+    }
+
+    async function recomputeDps() {
+      await fetch("/api/dps/recompute", {method:"POST"});
+      toast("⚡ DPS recomputed");
+      await loadTasks();
+    }
+
+    $("seedBtn").onclick = seedDemo;
+    $("recomputeBtn").onclick = recomputeDps;
+    $("refreshBtn").onclick = loadTasks;
+
+    // initial load
+    loadTasks();
+  </script>
+</body>
+</html>

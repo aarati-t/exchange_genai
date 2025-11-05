@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Command Center Chat — MIGIS{% endblock %}
+
+{% block content %}
+<a class="back" href="/dashboard">← Back to Decision Dashboards</a>
+<section class="hero">
+  <h1>Command Center Chat</h1>
+  <p class="subtitle">Ask anything about alerts, KPIs, or actions. (LLM: Google Generative AI)</p>
+</section>
+
+<div class="card">
+  <div style="display:flex;gap:8px;align-items:center">
+    <input id="q" placeholder="e.g., What districts have highest outbreak risk next week?" style="flex:1;padding:10px;border-radius:10px;border:1px solid rgba(122,162,255,.25);background:rgba(255,255,255,.02);color:#e8ecf7"/>
+    <button class="btn" onclick="ask()">Send</button>
+  </div>
+  <div id="answer" style="margin-top:12px;white-space:pre-wrap" class="hint">Model ready.</div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+async function ask(){
+  const q = document.getElementById('q').value.trim();
+  if(!q) return;
+  document.getElementById('answer').textContent = 'Thinking…';
+  const r = await fetch('/api/chat', {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ query:q })
+  });
+  const d = await r.json();
+  document.getElementById('answer').textContent = d.answer || 'No response.';
+}
+</script>
+{% endblock %}
