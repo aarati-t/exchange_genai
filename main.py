@@ -404,6 +404,159 @@ def recompute_all():
     write_local(rows)
     return {"ok":True,"updated":len(rows)}
 
+@app.get("/climate-risk", response_class=HTMLResponse)
+def climate_risk(request: Request):
+    return templates.TemplateResponse("climate_risk.html", {"request": request})
+
+@app.get("/api/kpis")
+def get_kpis():
+    if not BQ_ENABLED or not bq_client:
+        return {"critical_alerts": 12, "ongoing_projects": 37, "complaints_24h": 214, "avg_confidence": 76}
+
+    sql = """
+    SELECT critical_alerts, ongoing_projects, complaints_24h, avg_confidence
+    FROM `migis-prototype.migis_demo.kpis_daily`
+    WHERE day = CURRENT_DATE()
+    ORDER BY day DESC
+    LIMIT 1
+    """
+    try:
+        df = bq_client.query(sql).result().to_dataframe()
+        if df.empty:
+            raise ValueError("No KPI data")
+        row = df.iloc[0]
+        return {
+            "critical_alerts": int(row["critical_alerts"]),
+            "ongoing_projects": int(row["ongoing_projects"]),
+            "complaints_24h": int(row["complaints_24h"]),
+            "avg_confidence": int(row["avg_confidence"]),
+        }
+    except Exception as e:
+        print("⚠️ KPI fetch error:", e)
+        return {"critical_alerts": 12, "ongoing_projects": 37, "complaints_24h": 214, "avg_confidence": 76}
+
+# ---------------------------------------------------------------------
+# API: Map points (Health + Infra)
+# ---------------------------------------------------------------------
+@app.get("/api/health-alerts")
+def get_health_alerts():
+    if not BQ_ENABLED or not bq_client:
+        return {
+            "points": [
+                {"block": "Satara", "disease": "Dengue", "risk_score": 78, "lat": 17.68, "lng": 73.99},
+                {"block": "Thane", "disease": "Leptospirosis", "risk_score": 66, "lat": 19.21, "lng": 72.97},
+            ]
+        }
+
+    sql = """
+    SELECT lat, lng, label AS block, note AS disease, risk_score
+    FROM `migis-prototype.migis_demo.map_points`
+    WHERE category = 'Health'
+    ORDER BY risk_score DESC
+    LIMIT 100
+    """
+    df = bq_client.query(sql).result().to_dataframe()
+    points = [
+        {"block": r["block"], "disease": r["disease"], "risk_score": int(r["risk_score"]),
+         "lat": float(r["lat"]), "lng": float(r["lng"])}
+        for _, r in df.iterrows()
+    ]
+    return {"points": points}
+
+@app.get("/api/infra-events")
+def get_infra_events():
+    if not BQ_ENABLED or not bq_client:
+        return {
+            "points": [
+                {"asset": "Water Pipe - Zone Y", "note": "65% fail prob", "lat": 18.52, "lng": 73.85},
+                {"asset": "Bridge Y", "note": "80% fail in 6 months", "lat": 19.09, "lng": 74.74},
+            ]
+        }
+
+    sql = """
+    SELECT lat, lng, label AS asset, note
+    FROM `migis-prototype.migis_demo.map_points`
+    WHERE category IN ('Water','Transport')
+    ORDER BY label
+    LIMIT 100
+    """
+    df = bq_client.query(sql).result().to_dataframe()
+    points = [
+        {"asset": r["asset"], "note": r["note"], "lat": float(r["lat"]), "lng": float(r["lng"])}
+        for _, r in df.iterrows()
+    ]
+    return {"points": points}
+
+# ---------------------------------------------------------------------
+# API: Alerts Log (table view)
+# ---------------------------------------------------------------------
+@app.get("/api/alerts-log")
+def get_alerts_log():
+    try:
+        sql = """
+        SELECT FORMAT_TIMESTAMP('%Y-%m-%d %H:%M', ts) AS time, district, type, score, note
+        FROM `migis-prototype.migis_demo.alerts_log`
+        ORDER BY ts DESC
+        LIMIT 50
+        """
+        df = bq_client.query(sql).result().to_dataframe()
+        rows = [
+            dict(time=r["time"], district=r["district"], type=r["type"],
+                 score=int(r["score"]), note=r["note"])
+            for _, r in df.iterrows()
+        ]
+        return {"rows": rows}
+    except Exception as e:
+        print("🚨 BigQuery alerts-log error:", e)
+        return JSONResponse(status_code=200, content={"rows": [], "error": str(e)})
+
+# ---------------------------------------------------------------------
+# API: Time Series (Chart.js)
+# ---------------------------------------------------------------------
+@app.get("/api/time-series")
+def get_time_series():
+    if not BQ_ENABLED or not bq_client:
+        return {"labels": ["W1","W2","W3","W4","W5","W6"],
+                "complaints": [120,160,140,210,190,230],
+                "confidence": [60,64,67,72,71,76]}
+
+    sql = """
+    SELECT bucket, complaints, confidence
+    FROM `migis-prototype.migis_demo.complaints_timeseries`
+    ORDER BY bucket
+    """
+    df = bq_client.query(sql).result().to_dataframe()
+    labels = df["bucket"].tolist()
+    complaints = [int(v) for v in df["complaints"].tolist()]
+    confidence = [int(v) for v in df["confidence"].tolist()]
+    return {"labels": labels, "complaints": complaints, "confidence": confidence}
+
+# ---------------------------------------------------------------------
+# API: Chat (Gemini LLM)
+# ---------------------------------------------------------------------
+class ChatRequest(BaseModel):
+    query: str
+
+@app.post("/api/chat")
+def chat_with_ai(req: ChatRequest):
+    default_answer = "I suggest prioritizing Satara (outbreak 78%) and scheduling a bridge audit in Nashik within 7 days."
+    if not GENAI_ENABLED or not gemini_model:
+        return {"answer": default_answer}
+
+    try:
+        prompt = (
+            "You are an executive assistant in Maharashtra Command Center. "
+            "Provide concise, actionable insights for government officers.\n\n"
+            f"User: {req.query}"
+        )
+        resp = gemini_model.generate_content(prompt)
+        answer = getattr(resp, "text", "") or default_answer
+        return {"answer": answer.strip()}
+    except Exception as e:
+        print("⚠️ Gemini chat error:", e)
+        return {"answer": default_answer}
+
+
 # ---------------------------------------------------------------------
 # Run locally
 # ---------------------------------------------------------------------
