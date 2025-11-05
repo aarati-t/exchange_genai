@@ -1,0 +1,50 @@
+[
+  {
+    "description": "Water leakage in Sector 7",
+    "category": "",
+    "location": "mumbai",
+    "photo": {},
+    "verify_id": "on",
+    "consent": "on",
+    "id": "a4f52bbd",
+    "status": "Submitted",
+    "prediction": "Likely to resolve in 7 days",
+    "created_at": "CURRENT_TIMESTAMP"
+  },
+  {
+    "description": "traffic jam",
+    "category": "INFRA_ROAD",
+    "location": "Pune",
+    "photo": {},
+    "verify_id": "on",
+    "consent": "on",
+    "id": "5a8bfe78",
+    "status": "Submitted",
+    "prediction": "Likely to resolve in 7 days",
+    "created_at": "CURRENT_TIMESTAMP"
+  },
+  {
+    "description": "traffic jam",
+    "category": "INFRA_ROAD",
+    "location": "Pune",
+    "photo": {},
+    "verify_id": "on",
+    "consent": "on",
+    "id": "1fc9597d",
+    "status": "Submitted",
+    "prediction": "Likely to resolve in 7 days",
+    "created_at": "CURRENT_TIMESTAMP"
+  },
+  {
+    "description": "traffic jam",
+    "category": "INFRA_ROAD",
+    "location": "Pune",
+    "photo": {},
+    "verify_id": "on",
+    "consent": "on",
+    "id": "6b9b9016",
+    "status": "Submitted",
+    "prediction": "Likely to resolve in 7 days",
+    "created_at": "CURRENT_TIMESTAMP"
+  }
+]
